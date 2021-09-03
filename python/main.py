@@ -2,6 +2,7 @@ import time
 import numpy as np
 from numpy.random import rand
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 
 
 def init_state(N):
@@ -17,7 +18,7 @@ def init_alpha(N):
     # np.random.rand(2,N,N) 表示产生2*N*N随机0-1的数,返回为列表
     np.random.seed(2021)
     # -1 to 1 
-    alpha = np.random.rand(2, N, N)
+    alpha = 2*(np.random.rand(2, N, N)-0.5)
     return alpha
 
 
@@ -69,7 +70,7 @@ def calculate_magnetic(grid):
     return mag
 
 def simulation(grid_size = 10, step=3):
-    N = 2**grid_size # 点阵尺寸, N x N
+    N = grid_size # 点阵尺寸, N x N
     step = 2**step
     Energy = []  # 内能
     Magnetization = []  # 磁矩
@@ -88,17 +89,63 @@ def simulation(grid_size = 10, step=3):
             print("已完成第%d步模拟" % i)
     time_end = time.time()
     print('totally cost', time_end-time_start)
-    return Energy
+    return Energy,config
+
+def plot_spin(config):
+    N = len(config)
+    x_position = np.linspace(0,1,N)
+    y_position = np.linspace(0,1,N)
+    m_x = np.zeros([N,N])
+    m_y = config
+    #     m_z = m_z.numpy()
+
+    x_position,y_position = np.meshgrid(x_position, y_position)
+    plt.figure(figsize=(N,N))
+    ax = plt.subplot(1, 1, 1)
+
+    color = m_y
+    map_range=[-1, 1]
+    norm = mpl.colors.Normalize(vmin=map_range[0], vmax=map_range[1])
+    colormap = mpl.cm.bwr
+    color_map = colormap(norm(color))
+    color_map = color_map.reshape([-1, 4])
+    
+    quiver = ax.quiver(x_position, y_position, m_x, m_y,color=color_map,
+                       angles='xy', pivot='mid', scale=10)
 
 if __name__ == '__main__':
-    Energy_1 = simulation(grid_size=6, step=4)
-    Energy_2 = simulation(grid_size=6, step=4)
-    Energy_3 = simulation(grid_size=6, step=4)
-    Energy_4 = simulation(grid_size=6, step=4)
-    step = range(2**5)
+    step = 3
+    grid_size = 2
+    Energy_1,config1 = simulation(grid_size=grid_size, step=step)
+    Energy_2,config2 = simulation(grid_size=grid_size, step=step)
+    Energy_3,config3 = simulation(grid_size=grid_size, step=step)
+    Energy_4,config4 = simulation(grid_size=grid_size, step=step)
+
+    step = range(2**step)
+    site_num = (grid_size)**2
+    energy1_average = [i/site_num for i in Energy_1]
+    energy2_average = [i/site_num for i in Energy_2]
+    energy3_average = [i/site_num for i in Energy_3]
+    energy4_average = [i/site_num for i in Energy_4]
+
+    ### plot config
+    plot_spin(config1)
+    plot_spin(config2)
+    plot_spin(config3)
+    plot_spin(config4)
+
+    ### plot energy vs step
     plt.plot(step, Energy_1, 'bo')
     plt.plot(step, Energy_2, 'r+')
     plt.plot(step, Energy_3, 'b*')
     plt.plot(step, Energy_4, 'g--')
+    plt.xlabel('Step')
+    plt.ylabel('Energy')
+
+    ### plot average energy vs step
+    plt.plot(step, energy1_average, 'bo')
+    plt.plot(step, energy2_average, 'r+')
+    plt.plot(step, energy3_average, 'b*')
+    plt.plot(step, energy4_average, 'g--')
     plt.xlabel('Step')
     plt.ylabel('Energy')
