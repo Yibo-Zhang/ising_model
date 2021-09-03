@@ -89,7 +89,7 @@ def simulation(grid_size = 10, step=3):
             print("已完成第%d步模拟" % i)
     time_end = time.time()
     print('totally cost', time_end-time_start)
-    return Energy,config
+    return Energy,config,alpha
 
 def plot_spin(config):
     N = len(config)
@@ -116,10 +116,10 @@ def plot_spin(config):
 if __name__ == '__main__':
     step = 3
     grid_size = 2
-    Energy_1,config1 = simulation(grid_size=grid_size, step=step)
-    Energy_2,config2 = simulation(grid_size=grid_size, step=step)
-    Energy_3,config3 = simulation(grid_size=grid_size, step=step)
-    Energy_4,config4 = simulation(grid_size=grid_size, step=step)
+    Energy_1,config1,alpha1 = simulation(grid_size=grid_size, step=step)
+    Energy_2,config2,alpha2 = simulation(grid_size=grid_size, step=step)
+    Energy_3,config3,alpha3 = simulation(grid_size=grid_size, step=step)
+    Energy_4,config4,alpha4 = simulation(grid_size=grid_size, step=step)
 
     step = range(2**step)
     site_num = (grid_size)**2
