@@ -40,12 +40,68 @@ def flipping(grid,alpha):
             # 如果能量降低接受翻转
             if cost < 0:
                 s *= -1
-#             # 在0到1产生随机数，如果概率小于exp(-E/(kT))翻转
-#             elif rand() < np.exp(-cost*beta):
-#                 s *= -1
+            # 在0到1产生随机数，如果概率小于exp(-E/(kT))翻转
+            # elif np.random.rand() < np.exp(-cost/temperature):
+            #     s *= -1
             grid[a][b] = s
     return grid
 
+def clusterFlip(grid, alpha):
+    """Cluster flip (Wolff method)"""
+    N = len(grid)
+    # Randomly pick a seed spin
+
+    x = np.random.randint(0, N)
+    y = np.random.randint(0, N)
+    sign = grid[x, y]
+#     P_add = 1 - np.exp(-2 * self.Jfactor / temperature)
+    stack = [[x, y]]
+    lable = np.ones([N, N], int)
+    lable[x, y] = 0
+    while len(stack) > 0.5:
+
+            # While stack is not empty, pop and flip a spin
+
+        [currentx, currenty] = stack.pop()
+        grid[currentx, currenty] = -sign
+
+        # Append neighbor spins
+
+        # Left neighbor
+
+        [leftx, lefty] = [(currentx-1) % N, currenty]
+
+        if grid[leftx, lefty] * sign > 0.5 and lable[leftx, lefty]:
+            stack.append([leftx, lefty])
+            lable[leftx, lefty] = 0
+
+        # Right neighbor
+
+        [rightx, righty] = [(currentx+1) % N, currenty]
+
+        if grid[rightx, righty] * sign > 0.5 and lable[rightx, righty]:
+            stack.append([rightx, righty])
+            lable[rightx, righty] = 0
+
+        # Up neighbor
+
+        [upx, upy] = [currentx, (currenty+1) % N]
+
+        if grid[upx, upy] * sign > 0.5 and lable[upx, upy]:
+            stack.append([upx, upy])
+            lable[upx, upy] = 0
+
+        # Down neighbor
+
+        [downx, downy] = [currentx, (currenty-1) % N]
+
+        if grid[downx, downy] * sign > 0.5 and lable[downx, downy]:
+            stack.append([downx, downy])
+            lable[downx, downy] = 0
+
+    # Return cluster size
+
+    return grid
 
 def calculate_energy(grid, alpha):
     '''Energy of a given configuration'''
@@ -81,6 +137,27 @@ def simulation(grid_size = 10, step=3):
     alpha = init_alpha(N)
     for i in range(step):
         config = flipping(config,alpha)
+        e = calculate_energy(config,alpha)
+        Energy.append(e)
+        m = calculate_magnetic(config)
+        Magnetization.append(m)
+        if i % 300 == 0:
+            print("已完成第%d步模拟" % i)
+    time_end = time.time()
+    print('totally cost', time_end-time_start)
+    return Energy,config,alpha
+def cluster_flip_simulation(grid_size=10, step=3):
+    N = grid_size # 点阵尺寸, N x N
+    step = 2**step
+    Energy = []  # 内能
+    Magnetization = []  # 磁矩
+    # 开始模拟
+    time_start = time.time()
+    # 初始构型
+    config = init_state(N)
+    alpha = init_alpha(N)
+    for i in range(step):
+        config = clusterFlip(config,alpha)
         e = calculate_energy(config,alpha)
         Energy.append(e)
         m = calculate_magnetic(config)
