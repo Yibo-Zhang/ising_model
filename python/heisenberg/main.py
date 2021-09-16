@@ -42,6 +42,8 @@ class Perturbation_model:
         np.random.seed(2021)
         # -1 to 1 
         alpha = 2*(np.random.rand(2,N, N)-0.5)
+        np.random.seed()
+
         return alpha
     def calculate_single_energy(self,grid, a, b, alpha,lamda):
         # a,b 是 x 和 y的坐标
@@ -137,6 +139,7 @@ class New_direction_model:
         np.random.seed(2021)
         # -1 to 1 
         alpha = 2*(np.random.rand(2,N, N)-0.5)
+        np.random.seed()
         return alpha
     def calculate_single_energy(self,grid, a, b, alpha,lamda):
         # a,b 是 x 和 y的坐标
