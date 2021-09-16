@@ -5,24 +5,25 @@ from numpy.random import rand
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
-### initialize state. 这里 设置了 theta 和 beta 两个角度，spin 在 x，y，z方向的投影分别为cos(theta)*cos(beta),
-### cos(theta)*sin(beta) 和 sin(theta)
+### initialize state. 这里 设置了 theta 和 beta 两个角度，spin 在 x，y，z方向的投影分别为sin(theta)*cos(beta),
+### sin(theta)*sin(beta) 和 cos(theta)
 def init_theta(N):
-    # (0-2pi)
-    return np.random.rand(N,N)*2*math.pi
+    # (0-pi)
+    return np.random.rand(N,N)*math.pi
 
 def init_beta(N):
     # (0-2pi)
     return np.random.rand(N,N)*2*math.pi
-def cal_projection(grid):
+def cal_cartesion(grid):
     theta,beta = grid[0,:,:], grid[1,:,:]
-    x = np.cos(theta)*np.cos(beta)
-    y = np.cos(theta)*np.sin(beta)
-    z = np.sin(theta)  
-    return x,y,z 
+    x = np.sin(theta)*np.cos(beta)
+    y = np.sin(theta)*np.sin(beta)
+    z = np.cos(theta)  
+    N = len(x)
+    return np.concatenate([x,y,z],0).reshape([3,N,N]) 
 
 def init_grid(N):
-    (2,N,N)
+    #grid.shape = (2,N,N)
     theta = init_theta(N)
     theta = theta[np.newaxis, :]
     beta = init_beta(N)
@@ -31,131 +32,130 @@ def init_grid(N):
 
 def init_alpha(N):
     ''' generates a random connection parameter for initial condition'''
-    # np.random.rand(2,3,N,N) 表示产生2*3*N*N随机0-1的数,返回为列表,# 3 表示 x,y,z 方向的相互作用
+    # np.random.rand(2,N,N) 表示产生2*3*N*N随机0-1的数,返回为列表,# x,y,z 方向作用参数 一样
     np.random.seed(2021)
     # -1 to 1 
-    alpha = 2*(np.random.rand(2, 3,N, N)-0.5)
+    alpha = 2*(np.random.rand(2,N, N)-0.5)
     return alpha
 
 
-def calculate_single_energy(grid, x_point, y_point, alpha):
-    x, y, z = cal_projection(grid)
-    x_alpha = alpha[:,0,:,:]
-    x_s = x[x_point][y_point]
-    x_E = x[(a+1) % N][b]*alpha[0][(a+1) % N][b] + \
-        x[a][(b+1) % N]*alpha[1][a][b] + \
-        x[(a-1) % N][b]*alpha[0][a][b] + \
-        x[a][(b-1) % N]*alpha[1][a][(b-1)]
-    x_cost = -2*x_s*x_E
-
-
-
-    s = grid[a][b]
-    E = grid[(a+1) % N][b]*alpha[0][(a+1) % N][b] + \
-        grid[a][(b+1) % N]*alpha[1][a][b] + \
-        grid[(a-1) % N][b]*alpha[0][a][b] + \
-        grid[a][(b-1) % N]*alpha[1][a][(b-1)]
-    cost = -2*s*E
-
-
-
-
-
-def flipping(grid,alpha):
-    '''Monte Carlo move using Metropolis algorithm '''
+def calculate_single_energy(grid, a, b, alpha):
+    # a,b 是 x 和 y的坐标
+    N = len(alpha)
+    coordination = cal_cartesion(grid)
+    s = coordination[:,a,b] # 选了一个点，包含x，y，z
+    E = coordination[:,(a+1) % N,b]*alpha[0,(a+1) % N,b] + \
+        coordination[:,a,(b+1) % N]*alpha[1,a,b] + \
+        coordination[:,(a-1) % N,b]*alpha[0,a,b] + \
+        coordination[:,a,(b-1) % N]*alpha[1,a,(b-1)%N]
+    single_point_energy = np.sum(s*E)/2
+    return single_point_energy
+def calculate_total_energy(grid,alpha):
     N = len(grid)
+    total_energy = 0
+    for a in range(N):
+        for b in range(N):
+            total_energy += calculate_single_energy(grid, a, b, alpha)
+    return total_energy
+
+#### fliping with perturbation
+
+def calculate_perturbation_energy(grid,a,b,alpha,perturbation_theta,perturbation_beta):
+    new_grid = np.copy(grid)
+    new_grid[:,a,b] = new_grid[:,a,b]+[perturbation_theta,perturbation_beta]
+    return calculate_single_energy(new_grid,a,b,alpha)
+def flipping_perturbation(grid,alpha):
+    '''Monte Carlo move using Metropolis algorithm '''
+    N = grid.shape[1]
     for i in range(N):
         for j in range(N):
             # 产生0到N-1的随机数
             a = np.random.randint(0, N)
             b = np.random.randint(0, N)
-            s = grid[a][b]
-            E = grid[(a+1) % N][b]*alpha[0][(a+1) % N][b] + \
-                grid[a][(b+1) % N]*alpha[1][a][b] + \
-                grid[(a-1) % N][b]*alpha[0][a][b] + \
-                grid[a][(b-1) % N]*alpha[1][a][(b-1)]
-            # -s-s*E == -2sE == cost
-            cost = -2*s*E
+            perturbation_theta = (np.random.rand()-1)/2*math.pi # -0.25pi - 0.25pi
+            perturbation_beta = (np.random.rand()-1)/2*math.pi # -0.25pi - 0.25pi
+            origin_energy = calculate_single_energy(grid, a, b, alpha)
+            later_energy = calculate_perturbation_energy(grid,a,b,alpha,perturbation_theta,perturbation_beta)
+            cost = later_energy - origin_energy
             # 如果能量降低接受翻转
             if cost < 0:
-                s *= -1
-            # 在0到1产生随机数，如果概率小于exp(-E/(kT))翻转
-            # elif np.random.rand() < np.exp(-cost/temperature):
-            #     s *= -1
-            grid[a][b] = s
+                grid[:,a,b] = grid[:,a,b]+[perturbation_theta,perturbation_beta]
     return grid
+###########
+#### fliping with randomlized new direction
 
+def calculate_new_direction_energy(grid,a,b,alpha,new_theta,new_beta):
+    new_grid = np.copy(grid)
+    new_grid[:,a,b] = [new_theta,new_beta]
+    return calculate_single_energy(new_grid,a,b,alpha)
 
-
-def calculate_energy(grid, alpha):
-    '''Energy of a given configuration'''
-    energy = 0
-    N = len(grid[0])
+def flipping_random_new_direction(grid,alpha):
+    '''Monte Carlo move using Metropolis algorithm '''
+    N = grid.shape[1]
     for i in range(N):
         for j in range(N):
-            S = grid[i][j]
-            E = grid[(i+1) % N][j]*alpha[0][(i+1) % N][j] + \
-                grid[i][(j+1) % N]*alpha[1][i][j] + \
-                grid[(i-1) % N][j]*alpha[0][i][j] + \
-                grid[i][(j-1) % N]*alpha[1][i][(j-1) % N]
-            # 负号来自哈密顿量
-            energy += E*S
-    # 最近邻4个格点
-    return energy/4
+            # 产生0到N-1的随机数
+            a = np.random.randint(0, N)
+            b = np.random.randint(0, N)
+            new_theta = np.random.rand()*math.pi # -0.25pi - 0.25pi
+            new_beta = np.random.rand()*2*math.pi # -0.25pi - 0.25pi
+            origin_energy = calculate_single_energy(grid, a, b, alpha)
+            later_energy = calculate_new_direction_energy(grid,a,b,alpha,new_theta,new_beta)
+            cost = later_energy - origin_energy
+            # 如果能量降低接受翻转
+            if cost < 0:
+                grid[:,a,b] = [new_theta,new_beta]
+    return grid
 
+######
 
+#### simulation
 
-
-def simulation(grid_size = 10, step=3):
+def perturbation_simulation(grid_size = 10, step=3):
     N = grid_size # 点阵尺寸, N x N
-    step = 2**step
     Energy = []  # 内能
-    Magnetization = []  # 磁矩
     # 开始模拟
     time_start = time.time()
     # 初始构型
-    config = init_state(N)
+    config = init_grid(N)
     alpha = init_alpha(N)
     for i in range(step):
-        config = flipping(config,alpha)
-        e = calculate_energy(config,alpha)
+        config = flipping_perturbation(config,alpha)
+        e = calculate_total_energy(config,alpha)
         Energy.append(e)
-        m = calculate_magnetic(config)
-        Magnetization.append(m)
         if i % 300 == 0:
             print("已完成第%d步模拟" % i)
     time_end = time.time()
     print('totally cost', time_end-time_start)
     return Energy,config,alpha
-def cluster_flip_simulation(grid_size=10, step=3):
+    
+def new_direction_simulation(grid_size = 10, step=3):
     N = grid_size # 点阵尺寸, N x N
-    step = 2**step
     Energy = []  # 内能
-    Magnetization = []  # 磁矩
     # 开始模拟
     time_start = time.time()
     # 初始构型
-    config = init_state(N)
+    config = init_grid(N)
     alpha = init_alpha(N)
     for i in range(step):
-        config = clusterFlip(config,alpha)
-        e = calculate_energy(config,alpha)
+        config = flipping_random_new_direction(config,alpha)
+        e = calculate_total_energy(config,alpha)
         Energy.append(e)
-        m = calculate_magnetic(config)
-        Magnetization.append(m)
         if i % 300 == 0:
             print("已完成第%d步模拟" % i)
     time_end = time.time()
     print('totally cost', time_end-time_start)
     return Energy,config,alpha
-
-def plot_spin(config):
-    N = len(config)
+##### plot spin
+    
+def plot_spin_z(config):
+    N = config.shape[1]
+    cartesion = cal_cartesion(config)
+    z_direction_config = cartesion[2,:,:]
     x_position = np.linspace(0,1,N)
     y_position = np.linspace(0,1,N)
     m_x = np.zeros([N,N])
-    m_y = config
-    #     m_z = m_z.numpy()
+    m_y = z_direction_config
 
     x_position,y_position = np.meshgrid(x_position, y_position)
     plt.figure(figsize=(N,N))
@@ -171,39 +171,39 @@ def plot_spin(config):
     quiver = ax.quiver(x_position, y_position, m_x, m_y,color=color_map,
                        angles='xy', pivot='mid', scale=10)
 
-if __name__ == '__main__':
-    step = 3
-    grid_size = 2
-    Energy_1,config1,alpha1 = simulation(grid_size=grid_size, step=step)
-    Energy_2,config2,alpha2 = simulation(grid_size=grid_size, step=step)
-    Energy_3,config3,alpha3 = simulation(grid_size=grid_size, step=step)
-    Energy_4,config4,alpha4 = simulation(grid_size=grid_size, step=step)
+# if __name__ == '__main__':
+#     step = 3
+#     grid_size = 2
+#     Energy_1,config1,alpha1 = simulation(grid_size=grid_size, step=step)
+#     Energy_2,config2,alpha2 = simulation(grid_size=grid_size, step=step)
+#     Energy_3,config3,alpha3 = simulation(grid_size=grid_size, step=step)
+#     Energy_4,config4,alpha4 = simulation(grid_size=grid_size, step=step)
 
-    step = range(2**step)
-    site_num = (grid_size)**2
-    energy1_average = [i/site_num for i in Energy_1]
-    energy2_average = [i/site_num for i in Energy_2]
-    energy3_average = [i/site_num for i in Energy_3]
-    energy4_average = [i/site_num for i in Energy_4]
+#     step = range(2**step)
+#     site_num = (grid_size)**2
+#     energy1_average = [i/site_num for i in Energy_1]
+#     energy2_average = [i/site_num for i in Energy_2]
+#     energy3_average = [i/site_num for i in Energy_3]
+#     energy4_average = [i/site_num for i in Energy_4]
 
-    ### plot config
-    plot_spin(config1)
-    plot_spin(config2)
-    plot_spin(config3)
-    plot_spin(config4)
+#     ### plot config
+#     plot_spin(config1)
+#     plot_spin(config2)
+#     plot_spin(config3)
+#     plot_spin(config4)
 
-    ### plot energy vs step
-    plt.plot(step, Energy_1, 'bo')
-    plt.plot(step, Energy_2, 'r+')
-    plt.plot(step, Energy_3, 'b*')
-    plt.plot(step, Energy_4, 'g--')
-    plt.xlabel('Step')
-    plt.ylabel('Energy')
+#     ### plot energy vs step
+#     plt.plot(step, Energy_1, 'bo')
+#     plt.plot(step, Energy_2, 'r+')
+#     plt.plot(step, Energy_3, 'b*')
+#     plt.plot(step, Energy_4, 'g--')
+#     plt.xlabel('Step')
+#     plt.ylabel('Energy')
 
-    ### plot average energy vs step
-    plt.plot(step, energy1_average, 'bo')
-    plt.plot(step, energy2_average, 'r+')
-    plt.plot(step, energy3_average, 'b*')
-    plt.plot(step, energy4_average, 'g--')
-    plt.xlabel('Step')
-    plt.ylabel('Energy')
+#     ### plot average energy vs step
+#     plt.plot(step, energy1_average, 'bo')
+#     plt.plot(step, energy2_average, 'r+')
+#     plt.plot(step, energy3_average, 'b*')
+#     plt.plot(step, energy4_average, 'g--')
+#     plt.xlabel('Step')
+#     plt.ylabel('Energy')
