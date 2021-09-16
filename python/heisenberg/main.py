@@ -6,11 +6,12 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 
 class Perturbation_model:
-    def __init__(self,N,step):
+    def __init__(self,N,step,label='perturbation model'):
         self.N = N
         self.step=step
         self.config = self.init_grid(N)
         self.alpha = self.init_alpha(N)
+        self.label = label
     ### initialize state. 这里 设置了 theta 和 beta 两个角度，spin 在 x，y，z方向的投影分别为sin(theta)*cos(beta),
     ### sin(theta)*sin(beta) 和 cos(theta)
     def init_theta(self,N):
@@ -95,16 +96,17 @@ class Perturbation_model:
         print('totally cost', time_end-time_start)
         average_energy = [i/np.square(self.N) for i in Energy]
         plt.plot(average_energy)
-        # return Energy,self.config,self.alpha
-
+        plt.plot(average_energy,label=self.label)
+        plt.legend()
 
 
 class New_direction_model:
-    def __init__(self,N,step):
+    def __init__(self,N,step,label='new direction model'):
         self.N = N
         self.step=step
         self.config = self.init_grid(N)
         self.alpha = self.init_alpha(N)
+        self.label = label
     ### initialize state. 这里 设置了 theta 和 beta 两个角度，spin 在 x，y，z方向的投影分别为sin(theta)*cos(beta),
     ### sin(theta)*sin(beta) 和 cos(theta)
     def init_theta(self,N):
@@ -189,7 +191,8 @@ class New_direction_model:
         print('totally cost', time_end-time_start)
         average_energy = [i/np.square(self.N) for i in Energy]
         self.energy = Energy
-        plt.plot(average_energy)
+        plt.plot(average_energy,label=self.label)
+        plt.legend()
     def plot_spin_z(self):
         N = self.N
         cartesion = self.cal_cartesion(self.config)
@@ -213,13 +216,11 @@ class New_direction_model:
         quiver = ax.quiver(x_position, y_position, m_x, m_y,color=color_map,
                            angles='xy', pivot='mid', scale=10)
 
+
     
 class Up_down_flip_model(New_direction_model):
-    # def __init__(self,N,step):
-    #     self.N = N
-    #     self.step=step
-    #     self.config = self.init_grid(N)
-    #     self.alpha = self.init_alpha(N)
+    def __init__(self,N,step,label='simple flip model'):
+        super().__init__(N,step,label)
     def init_grid(self,N):
         theta = np.random.randint(2,size=(N,N))*math.pi
         theta = theta[np.newaxis, :]
