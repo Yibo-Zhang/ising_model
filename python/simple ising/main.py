@@ -4,11 +4,17 @@ from numpy.random import rand
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
+class Perturbation_flip:
+    def __init__(N):
+        state =self.init_state(N)
+        alpha = self.init_alpha(N)
+        
+
+
 
 def init_state(N):
     ''' generates a random spin configuration for initial condition'''
     # np.random.randint(2, size=(N,N)) 表示产生N*N随机数,返回为列表
-    np.random.seed()
     state = 2*np.random.randint(2, size=(N, N))-1
     return state
 
