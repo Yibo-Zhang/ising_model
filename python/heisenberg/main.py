@@ -39,32 +39,33 @@ def init_alpha(N):
     return alpha
 
 
-def calculate_single_energy(grid, a, b, alpha):
+def calculate_single_energy(grid, a, b, alpha,lamda):
     # a,b 是 x 和 y的坐标
-    N = len(alpha)
+    N = alpha.shape[1]
     coordination = cal_cartesion(grid)
     s = coordination[:,a,b] # 选了一个点，包含x，y，z
     E = coordination[:,(a+1) % N,b]*alpha[0,(a+1) % N,b] + \
         coordination[:,a,(b+1) % N]*alpha[1,a,b] + \
         coordination[:,(a-1) % N,b]*alpha[0,a,b] + \
         coordination[:,a,(b-1) % N]*alpha[1,a,(b-1)%N]
-    single_point_energy = np.sum(s*E)/2
+    Energy = s*E
+    single_point_energy = np.sum(Energy)/2+lamda*np.square(np.square(coordination[2,a,b])-1)
     return single_point_energy
-def calculate_total_energy(grid,alpha):
-    N = len(grid)
+def calculate_total_energy(grid,alpha,lamda):
+    N = alpha.shape[1]
     total_energy = 0
     for a in range(N):
         for b in range(N):
-            total_energy += calculate_single_energy(grid, a, b, alpha)
+            total_energy += calculate_single_energy(grid, a, b, alpha,lamda)
     return total_energy
 
 #### fliping with perturbation
 
-def calculate_perturbation_energy(grid,a,b,alpha,perturbation_theta,perturbation_beta):
+def calculate_perturbation_energy(grid,a,b,alpha,perturbation_theta,perturbation_beta,lamda):
     new_grid = np.copy(grid)
     new_grid[:,a,b] = new_grid[:,a,b]+[perturbation_theta,perturbation_beta]
-    return calculate_single_energy(new_grid,a,b,alpha)
-def flipping_perturbation(grid,alpha):
+    return calculate_single_energy(new_grid,a,b,alpha,lamda)
+def flipping_perturbation(grid,alpha,lamda):
     '''Monte Carlo move using Metropolis algorithm '''
     N = grid.shape[1]
     for i in range(N):
@@ -74,8 +75,8 @@ def flipping_perturbation(grid,alpha):
             b = np.random.randint(0, N)
             perturbation_theta = (np.random.rand()-1)/2*math.pi # -0.25pi - 0.25pi
             perturbation_beta = (np.random.rand()-1)/2*math.pi # -0.25pi - 0.25pi
-            origin_energy = calculate_single_energy(grid, a, b, alpha)
-            later_energy = calculate_perturbation_energy(grid,a,b,alpha,perturbation_theta,perturbation_beta)
+            origin_energy = calculate_single_energy(grid, a, b, alpha,lamda)
+            later_energy = calculate_perturbation_energy(grid,a,b,alpha,perturbation_theta,perturbation_beta,lamda)
             cost = later_energy - origin_energy
             # 如果能量降低接受翻转
             if cost < 0:
@@ -84,12 +85,12 @@ def flipping_perturbation(grid,alpha):
 ###########
 #### fliping with randomlized new direction
 
-def calculate_new_direction_energy(grid,a,b,alpha,new_theta,new_beta):
+def calculate_new_direction_energy(grid,a,b,alpha,new_theta,new_beta,lamda):
     new_grid = np.copy(grid)
     new_grid[:,a,b] = [new_theta,new_beta]
-    return calculate_single_energy(new_grid,a,b,alpha)
+    return calculate_single_energy(new_grid,a,b,alpha,lamda)
 
-def flipping_random_new_direction(grid,alpha):
+def flipping_random_new_direction(grid,alpha,lamda):
     '''Monte Carlo move using Metropolis algorithm '''
     N = grid.shape[1]
     for i in range(N):
@@ -99,8 +100,8 @@ def flipping_random_new_direction(grid,alpha):
             b = np.random.randint(0, N)
             new_theta = np.random.rand()*math.pi # -0.25pi - 0.25pi
             new_beta = np.random.rand()*2*math.pi # -0.25pi - 0.25pi
-            origin_energy = calculate_single_energy(grid, a, b, alpha)
-            later_energy = calculate_new_direction_energy(grid,a,b,alpha,new_theta,new_beta)
+            origin_energy = calculate_single_energy(grid, a, b, alpha,lamda)
+            later_energy = calculate_new_direction_energy(grid,a,b,alpha,new_theta,new_beta,lamda)
             cost = later_energy - origin_energy
             # 如果能量降低接受翻转
             if cost < 0:
@@ -111,7 +112,7 @@ def flipping_random_new_direction(grid,alpha):
 
 #### simulation
 
-def perturbation_simulation(grid_size = 10, step=3):
+def perturbation_simulation(grid_size = 10, step=3,lamda = 0):
     N = grid_size # 点阵尺寸, N x N
     Energy = []  # 内能
     # 开始模拟
@@ -120,8 +121,8 @@ def perturbation_simulation(grid_size = 10, step=3):
     config = init_grid(N)
     alpha = init_alpha(N)
     for i in range(step):
-        config = flipping_perturbation(config,alpha)
-        e = calculate_total_energy(config,alpha)
+        config = flipping_perturbation(config,alpha,lamda)
+        e = calculate_total_energy(config,alpha,lamda=0)
         Energy.append(e)
         if i % 300 == 0:
             print("已完成第%d步模拟" % i)
@@ -129,7 +130,7 @@ def perturbation_simulation(grid_size = 10, step=3):
     print('totally cost', time_end-time_start)
     return Energy,config,alpha
     
-def new_direction_simulation(grid_size = 10, step=3):
+def new_direction_simulation(grid_size = 10, step=3,lamda = 0):
     N = grid_size # 点阵尺寸, N x N
     Energy = []  # 内能
     # 开始模拟
@@ -138,8 +139,8 @@ def new_direction_simulation(grid_size = 10, step=3):
     config = init_grid(N)
     alpha = init_alpha(N)
     for i in range(step):
-        config = flipping_random_new_direction(config,alpha)
-        e = calculate_total_energy(config,alpha)
+        config = flipping_random_new_direction(config,alpha,lamda = lamda)
+        e = calculate_total_energy(config,alpha,lamda=0)
         Energy.append(e)
         if i % 300 == 0:
             print("已完成第%d步模拟" % i)
