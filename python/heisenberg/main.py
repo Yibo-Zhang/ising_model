@@ -1,9 +1,12 @@
+# -*- coding: utf-8 -*-
 import time
 import numpy as np
 import math
 from numpy.random import rand
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+import numba as nb
+
 
 class Perturbation_model:
     def __init__(self,N,step,label='perturbation model'):
@@ -194,6 +197,7 @@ class New_direction_model:
         print('totally cost', time_end-time_start)
         average_energy = [i/np.square(self.N) for i in Energy]
         self.energy = Energy
+        self.average_energy = average_energy
         plt.plot(average_energy,label=self.label)
         plt.legend()
     def plot_spin_z(self):
@@ -242,7 +246,7 @@ class Up_down_flip_model(New_direction_model):
 
                 origin_energy = super().calculate_single_energy(self.config, a, b, self.alpha,lamda)
                 later_energy = super().calculate_new_direction_energy(self.config,a,b,self.alpha,new_theta,new_beta,lamda)
-                cost = 2*(later_energy - origin_energy) *5
+                cost = 2*(later_energy - origin_energy) *2
                 # 如果能量降低接受翻转
                 if cost < 0:
                     self.config[:,a,b] = [new_theta,new_beta]
@@ -262,6 +266,7 @@ class Up_down_flip_model(New_direction_model):
         print('totally cost', time_end-time_start)
         average_energy = [i/np.square(self.N) for i in Energy]
         self.energy = Energy
+        self.average_energy = average_energy
         plt.plot(average_energy,label=self.label)
         plt.legend()
 
@@ -269,7 +274,8 @@ class Up_down_flip_model(New_direction_model):
 
 
 
-    
+
+# +
 class Up_down_flip_model_with_one_alpha(New_direction_model):
     def __init__(self,N,step,label='simple flip model'):
         self.N = N
@@ -285,7 +291,8 @@ class Up_down_flip_model_with_one_alpha(New_direction_model):
         return np.concatenate((theta,beta),axis=0)
     def init_alpha_ones(self,N):
         return np.ones([2,N,N])
-        
+       
+#     @nb.jit()
     def flipping_random_new_direction(self,lamda,temperature):
         '''Monte Carlo move using Metropolis algorithm '''
         for i in range(self.N):
@@ -299,7 +306,7 @@ class Up_down_flip_model_with_one_alpha(New_direction_model):
 
                 origin_energy = super().calculate_single_energy(self.config, a, b, self.alpha,lamda)
                 later_energy = super().calculate_new_direction_energy(self.config,a,b,self.alpha,new_theta,new_beta,lamda)
-                cost = 2*(later_energy - origin_energy)
+                cost = 2*(later_energy - origin_energy) * 1.8
                 # 如果能量降低接受翻转
                 if cost < 0:
                     self.config[:,a,b] = [new_theta,new_beta]
@@ -321,5 +328,6 @@ class Up_down_flip_model_with_one_alpha(New_direction_model):
         self.energy = Energy
         plt.plot(average_energy,label=self.label)
         plt.legend()
+# -
 
 
