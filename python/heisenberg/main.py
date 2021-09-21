@@ -89,11 +89,18 @@ class Perturbation_model:
     def simulation(self,lamda = 0):
         Energy = []  # 内能
         # 开始模拟
+        self.lowest_energy_with_alpha = np.copy(self.calculate_total_energy(self.config,self.alpha,lamda=1))
+        self.lowest_energy = np.copy(self.calculate_total_energy(self.config,self.alpha,lamda=0))
+        self.lowest_config = np.copy(self.config)
         time_start = time.time()
         # 初始构型
         for i in range(self.step):
             self.flipping_perturbation(lamda)
-            e = self.calculate_total_energy(self.config,self.alpha,lamda=0)
+            e = self.calculate_total_energy(self.config,self.alpha,lamda=1)
+            if e < self.lowest_energy_with_alpha:
+                self.lowest_energy_with_alpha = np.copy(self.calculate_total_energy(self.config,self.alpha,lamda=1))
+                self.lowest_energy = np.copy(np.copy(self.calculate_total_energy(self.config,self.alpha,lamda=0)))
+                self.lowest_config = np.copy(self.config)
             Energy.append(e)
             if i % 300 == 0:
                 print("已完成第%d步模拟" % i)
@@ -103,6 +110,28 @@ class Perturbation_model:
         plt.plot(average_energy)
         plt.plot(average_energy,label=self.label)
         plt.legend()
+    def plot_spin_z(self):
+        N = self.N
+        cartesion = self.cal_cartesion(self.lowest_config)
+        z_direction_config = cartesion[2,:,:]
+        x_position = np.linspace(0,1,N)
+        y_position = np.linspace(0,1,N)
+        m_x = np.zeros([N,N])
+        m_y = z_direction_config
+
+        x_position,y_position = np.meshgrid(x_position, y_position)
+        plt.figure(figsize=(N,N))
+        ax = plt.subplot(1, 1, 1)
+
+        color = m_y
+        map_range=[-1, 1]
+        norm = mpl.colors.Normalize(vmin=map_range[0], vmax=map_range[1])
+        colormap = mpl.cm.bwr
+        color_map = colormap(norm(color))
+        color_map = color_map.reshape([-1, 4])
+        
+        quiver = ax.quiver(x_position, y_position, m_x, m_y,color=color_map,
+                           angles='xy', pivot='mid', scale=10)
 
 
 class New_direction_model:
@@ -186,10 +215,17 @@ class New_direction_model:
     def simulation(self,lamda = 0):
         Energy = []  # 内能
         # 开始模拟
+        self.lowest_energy_with_alpha = np.copy(self.calculate_total_energy(self.config,self.alpha,lamda=1))
+        self.lowest_energy = np.copy(self.calculate_total_energy(self.config,self.alpha,lamda=0))
+        self.lowest_config = np.copy(self.config)
         time_start = time.time()
         for i in range(self.step):
             self.flipping_random_new_direction(lamda = lamda)
-            e = self.calculate_total_energy(self.config,self.alpha,lamda=0)
+            e = self.calculate_total_energy(self.config,self.alpha,lamda=1)
+            if e < self.lowest_energy_with_alpha:
+                self.lowest_energy_with_alpha = np.copy(self.calculate_total_energy(self.config,self.alpha,lamda=1))
+                self.lowest_energy = np.copy(np.copy(self.calculate_total_energy(self.config,self.alpha,lamda=0)))
+                self.lowest_config = np.copy(self.config)
             Energy.append(e)
             if i % 300 == 0:
                 print("已完成第%d步模拟" % i)
@@ -202,7 +238,7 @@ class New_direction_model:
         plt.legend()
     def plot_spin_z(self):
         N = self.N
-        cartesion = self.cal_cartesion(self.config)
+        cartesion = self.cal_cartesion(self.lowest_config)
         z_direction_config = cartesion[2,:,:]
         x_position = np.linspace(0,1,N)
         y_position = np.linspace(0,1,N)
@@ -225,7 +261,7 @@ class New_direction_model:
 
 class Up_down_flip_model(New_direction_model):
     def __init__(self,N,step,label='simple flip model'):
-        super().__init__(N,step,label='up down random flip')
+        super().__init__(N,step,label=label)
     def init_grid(self,N):
         theta = np.random.randint(2,size=(N,N))*math.pi
         theta = theta[np.newaxis, :]
@@ -255,10 +291,15 @@ class Up_down_flip_model(New_direction_model):
     def simulation(self,lamda = 0,temperature=2):
         Energy = []  # 内能
         # 开始模拟
+        self.lowest_energy = np.copy(self.calculate_total_energy(self.config,self.alpha,lamda=0))
+        self.lowest_config = np.copy(self.config)
         time_start = time.time()
         for i in range(self.step):
             self.flipping_random_new_direction(lamda = lamda,temperature=temperature)
             e = self.calculate_total_energy(self.config,self.alpha,lamda=0)
+            if e < self.lowest_energy:
+                self.lowest_energy = np.copy(np.copy(self.calculate_total_energy(self.config,self.alpha,lamda=0)))
+                self.lowest_config = np.copy(self.config)
             Energy.append(e)
             if i % 300 == 0:
                 print("已完成第%d步模拟" % i)
@@ -292,7 +333,6 @@ class Up_down_flip_model_with_one_alpha(New_direction_model):
     def init_alpha_ones(self,N):
         return np.ones([2,N,N])
        
-#     @nb.jit()
     def flipping_random_new_direction(self,lamda,temperature):
         '''Monte Carlo move using Metropolis algorithm '''
         for i in range(self.N):
@@ -315,10 +355,15 @@ class Up_down_flip_model_with_one_alpha(New_direction_model):
     def simulation(self,lamda = 0,temperature=2):
         Energy = []  # 内能
         # 开始模拟
+        self.lowest_energy = np.copy(self.calculate_total_energy(self.config,self.alpha,lamda=0))
+        self.lowest_config = np.copy(self.config)
         time_start = time.time()
         for i in range(self.step):
             self.flipping_random_new_direction(lamda = lamda,temperature=temperature)
             e = self.calculate_total_energy(self.config,self.alpha,lamda=0)
+            if e < self.lowest_energy:
+                self.lowest_energy = np.copy(self.calculate_total_energy(self.config,self.alpha,lamda=0))
+                self.lowest_config = np.copy(self.config)
             Energy.append(e)
             if i % 300 == 0:
                 print("已完成第%d步模拟" % i)
