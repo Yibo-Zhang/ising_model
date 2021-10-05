@@ -135,11 +135,11 @@ class Perturbation_model:
 
 
 class New_direction_model:
-    def __init__(self,N,step,label='new direction model'):
+    def __init__(self,N,step,seed=2021,label='new direction model'):
         self.N = N
         self.step=step
         self.config = self.init_grid(N)
-        self.alpha = self.init_alpha(N)
+        self.alpha = self.init_alpha(N,seed)
         self.label = label
     ### initialize state. 这里 设置了 theta 和 beta 两个角度，spin 在 x，y，z方向的投影分别为sin(theta)*cos(beta),
     ### sin(theta)*sin(beta) 和 cos(theta)
@@ -165,10 +165,10 @@ class New_direction_model:
         beta = beta[np.newaxis, :]
         return np.concatenate((theta,beta),axis=0)
 
-    def init_alpha(self,N):
+    def init_alpha(self,N,seed):
         ''' generates a random connection parameter for initial condition'''
         # np.random.rand(2,N,N) 表示产生2*3*N*N随机0-1的数,返回为列表,# x,y,z 方向作用参数 一样
-        np.random.seed(2021)
+        np.random.seed(seed)
         # -1 to 1 
         alpha = 2*(np.random.rand(2,N, N)-0.5)
         np.random.seed()
@@ -227,15 +227,15 @@ class New_direction_model:
                 self.lowest_energy = np.copy(np.copy(self.calculate_total_energy(self.config,self.alpha,lamda=0)))
                 self.lowest_config = np.copy(self.config)
             Energy.append(e)
-            if i % 300 == 0:
-                print("已完成第%d步模拟" % i)
-        time_end = time.time()
-        print('totally cost', time_end-time_start)
-        average_energy = [i/np.square(self.N) for i in Energy]
-        self.energy = Energy
-        self.average_energy = average_energy
-        plt.plot(average_energy,label=self.label)
-        plt.legend()
+#             if i % 300 == 0:
+#                 print("已完成第%d步模拟" % i)
+#         time_end = time.time()
+#         print('totally cost', time_end-time_start)
+#         average_energy = [i/np.square(self.N) for i in Energy]
+#         self.energy = Energy
+#         self.average_energy = average_energy
+#         plt.plot(average_energy,label=self.label)
+#         plt.legend()
     def plot_spin_z(self):
         N = self.N
         cartesion = self.cal_cartesion(self.lowest_config)
@@ -260,8 +260,8 @@ class New_direction_model:
                            angles='xy', pivot='mid', scale=10)
 
 class Up_down_flip_model(New_direction_model):
-    def __init__(self,N,step,label='simple flip model'):
-        super().__init__(N,step,label=label)
+    def __init__(self,N,step,seed,label='simple flip model'):
+        super().__init__(N,step,seed=seed, label=label)
     def init_grid(self,N):
         theta = np.random.randint(2,size=(N,N))*math.pi
         theta = theta[np.newaxis, :]
@@ -301,15 +301,15 @@ class Up_down_flip_model(New_direction_model):
                 self.lowest_energy = np.copy(np.copy(self.calculate_total_energy(self.config,self.alpha,lamda=0)))
                 self.lowest_config = np.copy(self.config)
             Energy.append(e)
-            if i % 300 == 0:
-                print("已完成第%d步模拟" % i)
-        time_end = time.time()
-        print('totally cost', time_end-time_start)
-        average_energy = [i/np.square(self.N) for i in Energy]
-        self.energy = Energy
-        self.average_energy = average_energy
-        plt.plot(average_energy,label=self.label)
-        plt.legend()
+#             if i % 300 == 0:
+#                 print("已完成第%d步模拟" % i)
+#         time_end = time.time()
+#         print('totally cost', time_end-time_start)
+#         average_energy = [i/np.square(self.N) for i in Energy]
+#         self.energy = Energy
+#         self.average_energy = average_energy
+#         plt.plot(average_energy,label=self.label)
+#         plt.legend()
 
 
 
